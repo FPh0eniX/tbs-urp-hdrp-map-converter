@@ -2,3 +2,6 @@
 __pycache__/
 error.log
 test_data/
+build/
+dist/
+*.spec.bak
