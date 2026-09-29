@@ -27,14 +27,17 @@
 Так можно вытащить roughness из готовой маски, поправить его и собрать обратно.
 
 **Пакетно.** Кидаешь папку, программа сама группирует файлы в наборы по именам
-и собирает маску для каждого. Перед запуском видно таблицу: что нашлось,
-что будет залито константой, где будет инверсия.
+и за один проход собирает для каждого набора два результата: маску и base color
+с альфой. Base color собирается только там, где нашлась opacity. Перед запуском
+видно таблицу: что нашлось, что будет залито константой, где будет инверсия
+и почему какой-то результат пропущен. Исходники программа никогда не перезаписывает.
 
 ## Раскладки
 
 | Раскладка | R | G | B | A |
 |---|---|---|---|---|
 | Unity Mask Map (URP / HDRP) | Metallic | AO | Detail | Smoothness |
+| Base Color + Opacity (URP / HDRP) | Base Color R | Base Color G | Base Color B | Opacity |
 | URP Metallic Smoothness | Metallic | свободный | свободный | Smoothness |
 | ORM (Unreal, glTF) | AO | Roughness | Metallic | нет |
 | RMA | Roughness | Metallic | AO | нет |
@@ -48,6 +51,22 @@
    и альфу под гладкость.
 3. Синий канал стандартный URP Lit не читает, detail mask нужен только в HDRP
    или в своём шейдере на Shader Graph.
+
+## Base color с альфой
+
+В раскладке «Base Color + Opacity» цвет копируется из base color без изменений,
+а в альфу идёт карта opacity. Base color достаточно кинуть в любую из строк
+R, G, B, он сам встанет во все три.
+
+В Unity:
+
+1. Галку **sRGB (Color Texture)** у такой текстуры оставить включённой.
+   Она влияет только на RGB, альфа всегда читается линейно.
+2. Текстуру положить в слот **Base Map**.
+3. В материале включить **Alpha Clipping** или поставить **Surface Type: Transparent**.
+4. **Smoothness Source** оставить на **Metallic Alpha**. Если выбрать Albedo Alpha,
+   URP начнёт читать альфу как гладкость и перестанет использовать её
+   как прозрачность.
 
 ## Что важно знать про пиксели
 
@@ -64,11 +83,25 @@
 ## Распознавание имён
 
 Пакетный режим и авторазбор по именам понимают такие окончания:
-`Metallic`, `Metalness`, `Metal`, `AO`, `Occlusion`, `Ambient_Occlusion`,
-`Roughness`, `Rough`, `Smoothness`, `Gloss`, `Detail`, `Height`, `Opacity`.
+
+| Роль | Окончания |
+|---|---|
+| Base Color | `BaseColor`, `Base_Color`, `BaseMap`, `Albedo`, `Diffuse`, `Diff`, `Color`, `Col`, `BC` |
+| Opacity | `Opacity`, `OpacityMask`, `Alpha`, `Transparency`, `Cutout` |
+| Metallic | `Metallic`, `Metalness`, `Metal` |
+| AO | `AO`, `Occlusion`, `Ambient_Occlusion` |
+| Roughness | `Roughness`, `Rough` |
+| Smoothness | `Smoothness`, `Smooth`, `Gloss`, `Glossiness` |
+| Detail | `Detail`, `DetailMask` |
+| Height | `Height`, `Displacement` |
 
 Имя набора это то, что осталось слева. Например `T_Rock_01_Ambient_Occlusion.png`
 даёт набор `T_Rock_01` и роль AO. Файлы без узнаваемого окончания пропускаются.
+
+Base color, в который альфа уже вшита, тоже узнаётся: `BaseColorAlpha`,
+`AlbedoTransparency`, `AlbedoAlpha`. Если в наборе есть и обычный base color,
+берётся обычный. Поэтому повторный запуск по папке с результатами не подхватит
+собственный вывод вместо исходника.
 
 ## Файлы проекта
 
